@@ -25,7 +25,7 @@ static int Brightness(CGImageRef image) {
     size_t w = CGImageGetWidth(image), h = CGImageGetHeight(image);
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
     CGContextRef ctx = CGBitmapContextCreate(NULL, w, h, 8, w * 4, space,
-                                             kCGImageAlphaNoneSkipLast);
+                                             (CGBitmapInfo)kCGImageAlphaNoneSkipLast);
     CGColorSpaceRelease(space);
     CGContextDrawImage(ctx, CGRectMake(0, 0, w, h), image);
     const uint8_t *px = CGBitmapContextGetData(ctx);
@@ -107,13 +107,11 @@ int main(int argc, const char *argv[]) {
             NSWindow *sheet = view.configureSheet;
             [sheet makeKeyAndOrderFront:nil];
             Spin(0.3);
-            CGImageRef shot = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow,
-                                                      (CGWindowID)sheet.windowNumber,
-                                                      kCGWindowImageBoundsIgnoreFraming);
-            if (shot) {
-                WritePNG(shot, [out stringByAppendingPathComponent:@"macos-config.png"]);
-                CGImageRelease(shot);
-            }
+            NSView *content = sheet.contentView;
+            NSBitmapImageRep *rep = [content bitmapImageRepForCachingDisplayInRect:content.bounds];
+            [content cacheDisplayInRect:content.bounds toBitmapImageRep:rep];
+            NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+            [png writeToFile:[out stringByAppendingPathComponent:@"macos-config.png"] atomically:YES];
             [sheet orderOut:nil];
         }
         printf(failures ? "FAILED\n" : "OK\n");

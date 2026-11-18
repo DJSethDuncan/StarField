@@ -14,7 +14,7 @@ jobs:
   engine-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build and run engine tests
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -32,7 +32,7 @@ jobs:
       matrix:
         arch: [x64, ARM64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build
         run: |
           cmake -S . -B build -A ${{ matrix.arch }}
@@ -46,11 +46,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build/Release/StarField.scr, windows/install.ps1 dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: StarField-windows-${{ matrix.arch }}
           path: dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: matrix.arch == 'x64' && always()
         with:
           name: screenshots-windows
@@ -60,7 +60,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build StarField.saver
         run: STARFIELD_VERSION="${TAG#v}" ./macos/build.sh
         env:
@@ -77,11 +77,11 @@ jobs:
         run: |
           mkdir -p dist
           ditto -c -k --keepParent build/macos/StarField.saver dist/StarField-macOS.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: StarField-macos
           path: dist/StarField-macOS.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: screenshots-macos
@@ -93,7 +93,7 @@ jobs:
     needs: [engine-tests, windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
       - name: Assemble release files
