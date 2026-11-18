@@ -1,0 +1,62 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "starfield.manifest"
+
+STRINGTABLE
+BEGIN
+    IDS_DESCRIPTION "StarField"
+END
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "StarField"
+            VALUE "FileVersion", "1.0.0"
+            VALUE "InternalName", "StarField"
+            VALUE "OriginalFilename", "StarField.scr"
+            VALUE "ProductName", "StarField"
+            VALUE "ProductVersion", "1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+DLG_SCRNSAVECONFIGURE DIALOGEX 0, 0, 260, 214
+STYLE DS_MODALFRAME | DS_CENTER | DS_SHELLFONT | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "StarField Settings"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    AUTOCHECKBOX    "Motion (off draws static stars)", IDC_MOTION, 10, 10, 240, 12
+    AUTOCHECKBOX    "Phase shift (distance-based red/blue tint)", IDC_PHASESHIFT, 10, 26, 240, 12
+
+    LTEXT           "Speed", IDC_SPEED_LABEL, 10, 46, 240, 10
+    CONTROL         "", IDC_SPEED, TRACKBAR_CLASS, TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, 6, 56, 248, 16
+
+    LTEXT           "Density", IDC_DENSITY_LABEL, 10, 76, 240, 10
+    CONTROL         "", IDC_DENSITY, TRACKBAR_CLASS, TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, 6, 86, 248, 16
+
+    LTEXT           "Star variation", IDC_VARIATION_LABEL, 10, 106, 240, 10
+    CONTROL         "", IDC_VARIATION, TRACKBAR_CLASS, TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, 6, 116, 248, 16
+
+    LTEXT           "Tail length", IDC_TAIL_LABEL, 10, 136, 240, 10
+    CONTROL         "", IDC_TAIL, TRACKBAR_CLASS, TBS_HORZ | TBS_NOTICKS | WS_TABSTOP, 6, 146, 248, 16
+
+    LTEXT           "Higher density may affect performance.", -1, 10, 168, 240, 10
+
+    PUSHBUTTON      "Reset to defaults", IDC_DEFAULTS, 10, 190, 80, 16
+    DEFPUSHBUTTON   "OK", IDOK, 146, 190, 50, 16
+    PUSHBUTTON      "Cancel", IDCANCEL, 200, 190, 50, 16
+END
+IDI_STARFIELD ICON "../assets/starfield.ico"
