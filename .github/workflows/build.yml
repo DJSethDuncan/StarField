@@ -29,6 +29,7 @@ jobs:
   windows:
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [x64, ARM64]
     steps:
@@ -39,7 +40,7 @@ jobs:
           cmake --build build --config Release --target StarField
       - name: Smoke test
         if: matrix.arch == 'x64'
-        shell: pwsh
+        shell: powershell
         run: ./windows/smoke.ps1 -Scr build/Release/StarField.scr -OutDir screenshots
       - name: Package
         shell: pwsh
