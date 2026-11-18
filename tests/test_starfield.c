@@ -282,13 +282,29 @@ static void test_field(void) {
     n = sf_field_step(&field, &settings, 1.0 / 60);
     for (size_t i = 0; i < n; i++) CHECK(!field.draw[i].has_tail);
 
-    /* Tail segments taper to the head diameter and end at the head. */
-    sf_draw_star d = {{255, 255, 255}, {10, 10, 2, 1}, 1, 0, 0, 0.32};
-    double x0, y0, x1, y1, lw;
-    sf_tail_segment(&d, 0, &x0, &y0, &x1, &y1, &lw);
-    CHECK(x0 == 0 && lw == 1);
-    sf_tail_segment(&d, 3, &x0, &y0, &x1, &y1, &lw);
-    CHECK(x1 == 10 && y1 == 10 && lw == 4);
+    /* Tail triangle: tip at the tail end, base through the head centre,
+       perpendicular to the motion and as wide as the head diameter. */
+    sf_draw_star d = {{255, 255, 255}, {30, 40, 2, 1}, 1, 0, 0, 0.32};
+    sf_tail_frame tf;
+    CHECK(sf_tail_triangle(&d, &tf));
+    CHECK(tf.tip_x == 0 && tf.tip_y == 0);
+    CHECK(tf.tip_x + tf.along_x == 30 && tf.tip_y + tf.along_y == 40);
+    CLOSE(hypot(tf.across_x, tf.across_y), 2, 9);                   /* half-width = radius */
+    CLOSE(tf.across_x * tf.along_x + tf.across_y * tf.along_y, 0, 9); /* perpendicular */
+    /* Longer tails only move the tip; the base stays the same. */
+    sf_draw_star longer = d;
+    longer.tail_x = -30;
+    longer.tail_y = -40;
+    sf_tail_frame lf;
+    CHECK(sf_tail_triangle(&longer, &lf));
+    CLOSE(lf.tip_x + lf.along_x, 30, 9);
+    CLOSE(lf.across_x, tf.across_x, 9);
+    CLOSE(lf.across_y, tf.across_y, 9);
+    /* Zero-length tail draws nothing. */
+    sf_draw_star none = d;
+    none.tail_x = 30;
+    none.tail_y = 40;
+    CHECK(!sf_tail_triangle(&none, &tf));
     sf_field_free(&field);
 }
 

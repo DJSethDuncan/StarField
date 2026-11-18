@@ -7,7 +7,7 @@
  *   /c[:<HWND>]   show the settings dialog (also the default with no args)
  *
  * Rendering uses Direct2D. The C core decides what to draw; this file only
- * turns the draw list into antialiased circles and round-capped tail strokes.
+ * turns the draw list into antialiased circles and triangular tails.
  */
 #ifndef UNICODE
 #define UNICODE
@@ -206,7 +206,9 @@ struct App {
     Mode mode = Mode::Saver;
     sf_settings settings{};
     ID2D1Factory *factory = nullptr;
-    ID2D1StrokeStyle *round = nullptr;
+    /* One unit triangle (0,0), (1,-1), (1,1), reused for every tail via a
+       per-star transform: tail length/direction/width are just the matrix. */
+    ID2D1PathGeometry *tail = nullptr;
     std::vector<Screen *> screens;
     POINT first_mouse{};
     bool have_mouse = false;
@@ -271,21 +273,25 @@ void Render(Screen &s, double seconds) {
     size_t n = sf_field_step(&s.field, &app.settings, seconds);
     ID2D1HwndRenderTarget *t = s.target;
     t->BeginDraw();
-    t->SetTransform(D2D1::Matrix3x2F::Scale(static_cast<float>(s.dpr),
-                                            static_cast<float>(s.dpr)));
+    const D2D1::Matrix3x2F view =
+        D2D1::Matrix3x2F::Scale(static_cast<float>(s.dpr), static_cast<float>(s.dpr));
+    t->SetTransform(view);
     t->Clear(D2D1::ColorF(SF_BACKGROUND_R / 255.0f, SF_BACKGROUND_G / 255.0f,
                           SF_BACKGROUND_B / 255.0f, 1.0f));
     for (size_t i = 0; i < n; i++) {
         const sf_draw_star &d = s.field.draw[i];
         float r = d.color.r / 255.0f, g = d.color.g / 255.0f, b = d.color.b / 255.0f;
         if (d.has_tail) {
-            s.brush->SetColor(D2D1::ColorF(r, g, b, static_cast<float>(d.tail_opacity)));
-            for (int seg = 0; seg < SF_TAIL_SEGMENTS; seg++) {
-                double x0, y0, x1, y1, lw;
-                sf_tail_segment(&d, seg, &x0, &y0, &x1, &y1, &lw);
-                t->DrawLine(D2D1::Point2F(static_cast<float>(x0), static_cast<float>(y0)),
-                            D2D1::Point2F(static_cast<float>(x1), static_cast<float>(y1)),
-                            s.brush, static_cast<float>(lw), app.round);
+            sf_tail_frame f;
+            if (app.tail && sf_tail_triangle(&d, &f)) {
+                s.brush->SetColor(D2D1::ColorF(r, g, b, static_cast<float>(d.tail_opacity)));
+                D2D1::Matrix3x2F place(
+                    static_cast<float>(f.along_x), static_cast<float>(f.along_y),
+                    static_cast<float>(f.across_x), static_cast<float>(f.across_y),
+                    static_cast<float>(f.tip_x), static_cast<float>(f.tip_y));
+                t->SetTransform(place * view);
+                t->FillGeometry(app.tail, s.brush);
+                t->SetTransform(view);
             }
         }
         s.brush->SetColor(D2D1::ColorF(r, g, b, static_cast<float>(d.head.opacity)));
@@ -421,9 +427,19 @@ int Run(HINSTANCE inst, Mode mode, HWND preview_parent) {
 
     if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &app.factory)))
         return 1;
-    D2D1_STROKE_STYLE_PROPERTIES stroke = D2D1::StrokeStyleProperties(
-        D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND);
-    app.factory->CreateStrokeStyle(stroke, nullptr, 0, &app.round);
+    if (SUCCEEDED(app.factory->CreatePathGeometry(&app.tail))) {
+        ID2D1GeometrySink *sink = nullptr;
+        if (SUCCEEDED(app.tail->Open(&sink))) {
+            sink->BeginFigure(D2D1::Point2F(0, 0), D2D1_FIGURE_BEGIN_FILLED);
+            const D2D1_POINT_2F base[2] = {D2D1::Point2F(1, -1), D2D1::Point2F(1, 1)};
+            sink->AddLines(base, 2);
+            sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+            if (FAILED(sink->Close())) Release(app.tail);
+            sink->Release();
+        } else {
+            Release(app.tail);
+        }
+    }
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = ScreenProc;
@@ -485,7 +501,7 @@ int Run(HINSTANCE inst, Mode mode, HWND preview_parent) {
         delete s;
     }
     app.screens.clear();
-    Release(app.round);
+    Release(app.tail);
     Release(app.factory);
     return 0;
 }

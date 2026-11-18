@@ -28,9 +28,6 @@ extern "C" {
 #define SF_BACKGROUND_G 4
 #define SF_BACKGROUND_B 5
 
-/* Number of tapered segments used to draw each tail. */
-#define SF_TAIL_SEGMENTS 4
-
 typedef double (*sf_random_fn)(void *ctx);
 
 /* Coordinates are normalised to the viewport; z decreases as stars approach. */
@@ -136,15 +133,27 @@ void sf_field_resize(sf_field *field, double width, double height, double dpr);
  * Advance by `seconds` (0 for a static redraw) and fill field->draw.
  * Returns the number of entries in field->draw to render, back to front in
  * array order. Renderers clear to the background colour, then for each entry
- * stroke the tail (if has_tail) as SF_TAIL_SEGMENTS round-capped segments
- * whose width tapers to the head diameter, then fill the head circle.
+ * fill the tail triangle (if has_tail, see sf_tail_triangle) at tail_opacity,
+ * then fill the head circle.
  */
 size_t sf_field_step(sf_field *field, const sf_settings *settings,
                      double seconds);
 
-/* Tail segment i (0..SF_TAIL_SEGMENTS-1): endpoints and stroke width. */
-void sf_tail_segment(const sf_draw_star *d, int i, double *x0, double *y0,
-                     double *x1, double *y1, double *line_width);
+/*
+ * Tail as a single triangle: a sharp tip at the tail end and a base through
+ * the head centre, perpendicular to the motion, as wide as the head diameter
+ * (the head circle covers the base edge). Tail length only moves the tip.
+ *
+ * Expressed as an affine frame so renderers can reuse one fixed unit triangle
+ * with vertices (0,0), (1,-1), (1,1):  P = tip + u * along + v * across.
+ * Returns 0 (draw nothing) for a degenerate, zero-length tail.
+ */
+typedef struct {
+    double tip_x, tip_y;       /* unit (0,0): tail end */
+    double along_x, along_y;   /* tip -> head centre */
+    double across_x, across_y; /* head centre -> one base corner (length = radius) */
+} sf_tail_frame;
+int sf_tail_triangle(const sf_draw_star *d, sf_tail_frame *frame);
 
 /* splitmix64-based [0,1) generator usable as sf_random_fn with a uint64_t*. */
 double sf_random(void *state);

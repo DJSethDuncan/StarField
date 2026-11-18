@@ -228,14 +228,16 @@ size_t sf_field_step(sf_field *field, const sf_settings *settings,
     return count;
 }
 
-void sf_tail_segment(const sf_draw_star *d, int i, double *x0, double *y0,
-                     double *x1, double *y1, double *line_width) {
-    double start = (double)i / SF_TAIL_SEGMENTS;
-    double end = (double)(i + 1) / SF_TAIL_SEGMENTS;
-    double dx = d->head.x - d->tail_x, dy = d->head.y - d->tail_y;
-    *x0 = d->tail_x + dx * start;
-    *y0 = d->tail_y + dy * start;
-    *x1 = d->tail_x + dx * end;
-    *y1 = d->tail_y + dy * end;
-    *line_width = d->head.radius * 2 * end;
+int sf_tail_triangle(const sf_draw_star *d, sf_tail_frame *f) {
+    double ax = d->head.x - d->tail_x, ay = d->head.y - d->tail_y;
+    double length = hypot(ax, ay);
+    if (!(length > 1e-6) || !(d->head.radius > 0)) return 0;
+    double scale = d->head.radius / length;
+    f->tip_x = d->tail_x;
+    f->tip_y = d->tail_y;
+    f->along_x = ax;
+    f->along_y = ay;
+    f->across_x = -ay * scale;
+    f->across_y = ax * scale;
+    return 1;
 }

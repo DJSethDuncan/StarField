@@ -103,9 +103,10 @@ tests/     test_starfield.c Engine tests ported from The Bridge
   passes the viewer (`z ≤ 0.035`) or leaves the frame.
 - **Analytic tails.** No frame history is kept. Each tail is computed as a
   45 ms "shutter exposure" back along the star's own perspective ray. It is
-  capped at 18 px × tail length and drawn at 32% of the head's opacity. It is
-  stroked as four overlapping round-capped segments that taper from a fine tip
-  to the head's diameter. Exposure restarts at zero when a star spawns or the
+  capped at 18 px × tail length and drawn at 32% of the head's opacity. Each
+  tail is one filled triangle: a sharp tip at the tail end and a base as wide
+  as the head, centred on the head (which covers it). Changing the tail
+  length only moves the tip. Exposure restarts at zero when a star spawns or the
   field is resized, so a tail never joins unrelated positions.
 - **Colour.** Stars are white by default. *Star variation* interpolates a
   five-stop stellar palette per star. *Phase shift* adds a depth-based red
@@ -127,7 +128,7 @@ tests/     test_starfield.c Engine tests ported from The Bridge
 `StarFieldScreenSaverView` subclasses `ScreenSaverView`, and the system
 creates one view per display. Each frame, the view renders the engine's draw
 list into a `CGBitmapContext` using Core Graphics, with antialiased circles
-and round-capped strokes. The finished image becomes the view's layer
+and filled triangle tails. The finished image becomes the view's layer
 contents. The options sheet is built in code with AppKit, so there are no nib
 files.
 
@@ -147,7 +148,9 @@ handles the standard screensaver arguments:
 | `/p <hwnd>` | Live preview inside the Screen Saver Settings monitor graphic. |
 | `/c` (or no args) | Settings dialog. |
 
-Rendering uses Direct2D (hardware accelerated, antialiased). The process is
+Rendering uses Direct2D (hardware accelerated, antialiased). Every tail
+reuses one unit-triangle geometry, built once, which each star's transform
+stretches and rotates into place. The process is
 per-monitor DPI aware: it draws in logical pixels scaled by each monitor's
 DPI, so star sizes match what you see on the web. Frames are paced with
 `DwmFlush` and the 60 Hz engine clock. The C runtime is linked statically, so

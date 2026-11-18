@@ -301,7 +301,6 @@ static sf_settings LoadSettings(void) {
         /* Top-left origin in logical pixels, like the canvas. */
         CGContextTranslateCTM(_bitmap, 0, ph);
         CGContextScaleCTM(_bitmap, (CGFloat)pw / size.width, -(CGFloat)ph / size.height);
-        CGContextSetLineCap(_bitmap, kCGLineCapRound);
         CGContextSetShouldAntialias(_bitmap, true);
         CGContextSetInterpolationQuality(_bitmap, kCGInterpolationHigh);
     }
@@ -336,16 +335,17 @@ static sf_settings LoadSettings(void) {
         const sf_draw_star *d = &_field.draw[i];
         CGFloat r = d->color.r / 255.0, g = d->color.g / 255.0, b = d->color.b / 255.0;
         if (d->has_tail) {
-            /* Overlapping round-capped segments taper from a fine tip to the head. */
-            CGContextSetRGBStrokeColor(ctx, r, g, b, d->tail_opacity);
-            for (int seg = 0; seg < SF_TAIL_SEGMENTS; seg++) {
-                double x0, y0, x1, y1, lw;
-                sf_tail_segment(d, seg, &x0, &y0, &x1, &y1, &lw);
-                CGContextSetLineWidth(ctx, lw);
+            /* One filled triangle from a sharp tip to the head's diameter. */
+            sf_tail_frame t;
+            if (sf_tail_triangle(d, &t)) {
+                double bx = t.tip_x + t.along_x, by = t.tip_y + t.along_y;
+                CGContextSetRGBFillColor(ctx, r, g, b, d->tail_opacity);
                 CGContextBeginPath(ctx);
-                CGContextMoveToPoint(ctx, x0, y0);
-                CGContextAddLineToPoint(ctx, x1, y1);
-                CGContextStrokePath(ctx);
+                CGContextMoveToPoint(ctx, t.tip_x, t.tip_y);
+                CGContextAddLineToPoint(ctx, bx + t.across_x, by + t.across_y);
+                CGContextAddLineToPoint(ctx, bx - t.across_x, by - t.across_y);
+                CGContextClosePath(ctx);
+                CGContextFillPath(ctx);
             }
         }
         CGContextSetRGBFillColor(ctx, r, g, b, d->head.opacity);
