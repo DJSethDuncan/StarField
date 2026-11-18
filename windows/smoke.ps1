@@ -18,15 +18,34 @@ function Save-Screen([string]$path) {
     return $bmp
 }
 
-function Count-Bright($bmp) {
-    $bright = 0
-    for ($y = 0; $y -lt $bmp.Height; $y += 4) {
-        for ($x = 0; $x -lt $bmp.Width; $x += 4) {
-            if ($bmp.GetPixel($x, $y).R -gt 60) { $bright++ }
-        }
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+public static class Pixels {
+    static byte[] Read(Bitmap bmp) {
+        var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                                ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
+        var bytes = new byte[data.Stride * data.Height];
+        Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+        bmp.UnlockBits(data);
+        return bytes;
     }
-    return $bright
+    // Pixels clearly brighter than the #020405 background.
+    public static int Lit(Bitmap bmp) {
+        var b = Read(bmp); int n = 0;
+        for (int i = 0; i < b.Length; i += 4) if (b[i + 2] > 40) n++;
+        return n;
+    }
+    // Pixels that changed between two frames.
+    public static int Changed(Bitmap a, Bitmap c) {
+        var x = Read(a); var y = Read(c); int n = 0;
+        for (int i = 0; i < x.Length; i += 4) if (Math.Abs(x[i + 2] - y[i + 2]) > 20) n++;
+        return n;
+    }
 }
+"@
 
 $failures = 0
 
@@ -39,12 +58,14 @@ if ($p.HasExited) {
     $a = Save-Screen (Join-Path $OutDir 'windows-frame-1.png')
     Start-Sleep -Milliseconds 300
     $b = Save-Screen (Join-Path $OutDir 'windows-frame-2.png')
-    $brightA = Count-Bright $a
-    Write-Host "bright samples: $brightA"
+    $lit = [Pixels]::Lit($a)
+    $changed = [Pixels]::Changed($a, $b)
+    Write-Host "lit pixels: $lit, changed between frames: $changed"
     # The background is #020405; a mostly-dark screen with some stars is expected.
     $dark = $a.GetPixel([int]($a.Width / 3), 5)
     Write-Host "sample pixel: $($dark.R),$($dark.G),$($dark.B)"
-    if ($brightA -lt 20) { Write-Host 'FAIL: frame looks empty'; $failures++ }
+    if ($lit -lt 200) { Write-Host 'FAIL: frame looks empty'; $failures++ }
+    if ($changed -lt 50) { Write-Host 'FAIL: frames are not animating'; $failures++ }
     $a.Dispose(); $b.Dispose()
     Stop-Process -Id $p.Id -Force
 }
