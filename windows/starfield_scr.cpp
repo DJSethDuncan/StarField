@@ -121,9 +121,9 @@ void UpdateLabel(HWND dlg, const Slider &s) {
     if (s.id == IDC_DENSITY || s.id == IDC_VARIATION)
         swprintf(text, 64, L"%ls: %d%%", s.name, static_cast<int>(std::lround(v * 100)));
     else if (s.id == IDC_SPEED)
-        swprintf(text, 64, L"%ls: %g×", s.name, std::round(v * 1000) / 1000);
+        swprintf(text, 64, L"%ls: %g\u00D7", s.name, std::round(v * 1000) / 1000);
     else
-        swprintf(text, 64, L"%ls: %.2f×", s.name, v);
+        swprintf(text, 64, L"%ls: %.2f\u00D7", s.name, v);
     SetDlgItemTextW(dlg, s.label, text);
 }
 
