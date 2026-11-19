@@ -100,7 +100,9 @@ tests/     test_starfield.c Engine tests ported from The Bridge
   for `y`), so it drifts outward from the centre as `z` shrinks. Depth falls at
   `0.4 × speed` per second. Radius grows from 0.35 px to 2 px and opacity from
   0.3 to 1 as the star gets closer. A star respawns at the far plane when it
-  passes the viewer (`z ≤ 0.035`) or leaves the frame.
+  passes the viewer (`z ≤ 0.035`) or leaves the frame. Each star spawns at
+  least 0.02 off the centre axis, so it always leaves the frame before it
+  passes the viewer and never vanishes mid-screen.
 - **Analytic tails.** No frame history is kept. Each tail is computed as a
   45 ms "shutter exposure" back along the star's own perspective ray. It is
   capped at 18 px × tail length and drawn at 32% of the head's opacity. Each

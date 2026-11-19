@@ -14,6 +14,16 @@ static double clampd(double v, double lo, double hi) {
 
 static int is_finite(double v) { return isfinite(v); }
 
+/* A star passes the viewer at NEAR_Z and leaves the frame past EDGE * z. */
+#define NEAR_Z 0.035
+#define EDGE 0.51
+/*
+ * x and y never change, so a star leaves the frame once z < max(|x|, |y|) / EDGE.
+ * Keeping that offset at or above this (about 15% over EDGE * NEAR_Z) makes it
+ * exit at z ~ 0.039, before NEAR_Z, instead of vanishing mid-screen.
+ */
+#define MIN_OFFSET 0.02
+
 double sf_random(void *state) {
     uint64_t *s = (uint64_t *)state;
     uint64_t z = (*s += 0x9E3779B97F4A7C15ULL);
@@ -25,8 +35,17 @@ double sf_random(void *state) {
 
 void sf_create_star(sf_star *star, int initial, sf_random_fn random, void *ctx) {
     double z = initial ? 0.08 + random(ctx) * 0.92 : 1.0;
-    star->x = (random(ctx) - 0.5) * z;
-    star->y = (random(ctx) - 0.5) * z;
+    double x = (random(ctx) - 0.5) * z;
+    double y = (random(ctx) - 0.5) * z;
+    double reach = fmax(fabs(x), fabs(y));
+    if (reach == 0) {
+        x = MIN_OFFSET;
+    } else if (reach < MIN_OFFSET) {
+        x *= MIN_OFFSET / reach;
+        y *= MIN_OFFSET / reach;
+    }
+    star->x = x;
+    star->y = y;
     star->z = z;
     star->trail_age = 0;
     star->color_seed = random(ctx);
@@ -38,8 +57,8 @@ void sf_advance_star(sf_star *star, double seconds, sf_random_fn random,
     double elapsed = is_finite(seconds) ? clampd(seconds, 0, 0.05) : 0;
     star->z -= elapsed * SF_SPEED * speed;
     star->trail_age = fmin(SF_TRAIL_SECONDS, star->trail_age + elapsed);
-    if (star->z <= 0.035 || fabs(star->x) > 0.51 * star->z ||
-        fabs(star->y) > 0.51 * star->z) {
+    if (star->z <= NEAR_Z || fabs(star->x) > EDGE * star->z ||
+        fabs(star->y) > EDGE * star->z) {
         sf_create_star(star, 0, random, ctx);
     }
 }

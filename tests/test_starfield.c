@@ -69,7 +69,7 @@ static void test_projection(void) {
 
     /* Respawn when passing the viewer or leaving the viewport. */
     sf_star cases[2] = {star_at(0, 0, 0.03, 0), star_at(0.4, 0, 0.2, 0)};
-    sf_star expect = {0, 0, 1, 0, 0.5};
+    sf_star expect = {0.02, 0, 1, 0, 0.5}; /* dead-centre spawn nudged off axis */
     fixed_value = 0.5;
     for (int i = 0; i < 2; i++) {
         sf_advance_star(&cases[i], 1.0 / 30, fixed, NULL, 1);
@@ -94,6 +94,28 @@ static void test_projection(void) {
         CHECK(pt.x >= 0 && pt.x <= 1200);
         CHECK(pt.y >= 0 && pt.y <= 900);
         CHECK(isfinite(pt.radius));
+    }
+
+    /* Every star flies off an edge before it reaches the viewer (z <= 0.035),
+       so none vanishes mid-screen. Includes a dead-centre spawn. */
+    const double dt = 1.0 / 60;
+    for (int i = 0; i < 2000; i++) {
+        sf_star s;
+        if (i == 0) {
+            fixed_value = 0.5;
+            sf_create_star(&s, 0, fixed, NULL);
+        } else {
+            sf_create_star(&s, i % 2, rnd, &seed);
+        }
+        for (;;) {
+            sf_star prev = s;
+            sf_advance_star(&s, dt, rnd, &seed, 1);
+            if (s.z > prev.z) {
+                double z = prev.z - dt * SF_SPEED;
+                CHECK(fabs(prev.x) > 0.51 * z || fabs(prev.y) > 0.51 * z);
+                break;
+            }
+        }
     }
 }
 
